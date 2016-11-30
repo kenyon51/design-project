@@ -22,8 +22,9 @@
 DigitialInputPins ir_sensor(FEHIO::);
 
 //---------------List of functions ---------------------------//
-int time_peak();
-float calculate_frequency(int);
+//Core methods
+float time_peak();
+float calculate_frequency(float);
 int pick_frequency(float);
 void display_frequency(int); 
 
@@ -31,12 +32,13 @@ void display_frequency(int);
 void safe_sleep(int sleep_duration /*in msecs*/);
 void write_message(const char message[]);
 bool within_error(float val, float target);
-//@DEBUG: The following methods are for debugging purposes
+
+//@DEBUG: Debugging Methods
 //Used for running unit tests
 void assert(bool is_successful, const char failure_string[]);
 //Run our unit tests to halt in case something goes wrong
 void validate();
-//Test hardware
+//Test hardware by prompting user
 //void test_hardware();
 
 
@@ -62,7 +64,7 @@ int main(){
   return 0;
 }
 
-int peak_time()
+float time_peak()
 {
   int timer = 0;
   //Wait for trough and start of new peak before starting to collect data
@@ -76,14 +78,13 @@ int peak_time()
   return timer;
 }
 
-float calculate_frequency(int peak_time)
+float calculate_frequency(float peak_time)
 {
-  return peak_time * (1.0/DUTYCYCLE);
+  return 1.0/(peak_time * 2);
 }
-
+//25,40,65,80,110
 int pick_frequency(float raw_frequency)
 {
-  //25,40,65,80,110
   if(within_error(raw_frequency,25){return 25;}
   else if(within_error(raw_frequency,40){return 40;}
   else if(within_error(raw_frequency,65){return 65;}
@@ -91,6 +92,8 @@ int pick_frequency(float raw_frequency)
   else if(within_error(raw_frequency,110){return 110;}
   else{return 0;}
 }
+//@Author: yan vologzhanin
+//Takes a frequency value, including 0, and outputs it to clean screen
 void display_frequency(int corrected_frequency)
 {
   std::stringstream message;
@@ -110,6 +113,7 @@ void safe_sleep(int sleep_duration){
     if(LCD.Touch())
     {
       write_message("Exiting Program...\n");
+      exit(0);
     }
   }
 }
@@ -140,9 +144,17 @@ void assert(bool is_successful, const char failure_string){
 void validate(){
     assert(true,"Unit tests are broken");
     
+    //@NOTE: These unit tests only work if duty cycle is .5, so we add this check
+    if(DUTYCYCLE == .5){
+	assert(calculate_frequency(5) == 10, "calculate_frequency case 1 fail");
+	assert(calculate_frequency(13) == 26, "calculate_frequency case 2 fail");
+	assert(calculate_frequency(10) == 20, "calculate_frequency case 3 fail");
+	assert(calculate_frequency(500) == 1000, "calculate_frequency case 4 fail");
+    }
+    
     //Withint Error tests
     assert(within_error(25,25),"Within_error trivial case failed");
-    assert(within_error(25.05,25),"Within_error interal case failed");
+    assert(within_error(25.05,25),"Within_error internal case failed");
     assert(within_error(25.75,25),"Within_error upper edge case failed");
     assert(within_error(24.25,25),"Within_error lower edge case failed");
     assert(!within_error(200,25), "Within_error trival fail case passed");
