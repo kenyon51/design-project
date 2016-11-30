@@ -17,17 +17,20 @@
 
 //Conversion factors
 #define SECSTOMSECS 1000
+
 //Configure pins
 DigitialInputPins ir_sensor(FEHIO::);
 
 //---------------List of functions ---------------------------//
-bool[] grab_data();
-bool valid_data();
-void pick_frequency();
-void display_frequency(); 
+int time_peak();
+float calculate_frequency(int);
+int pick_frequency(float);
+void display_frequency(int); 
 
+//Utility Methods
 void safe_sleep(int sleep_duration /*in msecs*/);
 void write_message(const char message[]);
+bool within_error(float val, float target);
 //@DEBUG: The following methods are for debugging purposes
 //Used for running unit tests
 void assert(bool is_successful, const char failure_string[]);
@@ -45,32 +48,54 @@ int main(){
   while(!LCD.Touch()){Sleep(1);}
   write_message("Starting Program");
   //Config neccessary variables
-  bool data[REFRESHRATE*SAMPLEDURATION], 
+  int peak_time;
+  float raw_frequency;
+  int corrected_frequency;
+  //Enter event loop
   while(true)
   {
-    grab_data();
-    pick_frequency();
-    display_frequency();
-    safe_sleep(1);
-    
+    peak_time = time_peak();
+    raw_frequency = calculate_frequency(peak_time);
+    corrected_frequency = pick_frequency(raw_frequency);
+    display_frequency(corrected_frequency);
   }
   return 0;
 }
 
-bool[] grab_data()
+int peak_time()
 {
-  safe_sleep(SAMPLEDURATION * SECSTOMSECS);
-}
-bool valid_data(bool[] data)
-{
+  int timer = 0;
+  //Wait for trough and start of new peak before starting to collect data
+  //To prevent counting "half waves"
+  while(ir_sensor.Value()){safe_sleep(1);}
+  while(!ir_sensor.Value()){safe_sleep(1);}
   
-}
-void pick_frequency(){
-  
+  //Count how long peak is
+  while(ir_sensor.Value()){safe_sleep(1);timer++}
+
+  return timer;
 }
 
-void display_frequency(){
-  
+float calculate_frequency(int peak_time)
+{
+  return peak_time * (1.0/DUTYCYCLE);
+}
+
+int pick_frequency(float raw_frequency)
+{
+  //25,40,65,80,110
+  if(within_error(raw_frequency,25){return 25;}
+  else if(within_error(raw_frequency,40){return 40;}
+  else if(within_error(raw_frequency,65){return 65;}
+  else if(withint_error(raw_frequency,80){return 80;}
+  else if(within_error(raw_frequency,110){return 110;}
+  else{return 0;}
+}
+void display_frequency(int corrected_frequency)
+{
+  std::stringstream message;
+  message << "Current Frequency: " << corrected_frequency << " Hz";
+  write_message(message.str());
 }
 
 
@@ -94,6 +119,10 @@ void write_message(const char message[])
     LCD.Clear();
     LCD.Write(message);
 }
+bool within_error(float val, float target)
+{
+    return val <= target * (1.0+PERCENTERROR) && val >= target * (1.0-PERCENTERROR);
+}
 
 //@Author: yan vologzhanin
 //Takes a boolean is_successful(Which should be a unit test)
@@ -110,4 +139,16 @@ void assert(bool is_successful, const char failure_string){
 
 void validate(){
     assert(true,"Unit tests are broken");
+    
+    //Withint Error tests
+    assert(within_error(25,25),"Within_error trivial case failed");
+    assert(within_error(25.05,25),"Within_error interal case failed");
+    assert(within_error(25.75,25),"Within_error upper edge case failed");
+    assert(within_error(24.25,25),"Within_error lower edge case failed");
+    assert(!within_error(200,25), "Within_error trival fail case passed");
+    assert(!within_error(25.76,25), "Within_error edge fail case passed");
+    
+    //Frequency Pick tests
+    assert(pick_frequency(110.5) == 110, "Pick_frequency simple case fail");
+    assert(pick_frequency(20000) == 0, "pick_frequency 0 case fail");
 }
