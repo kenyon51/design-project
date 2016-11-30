@@ -10,7 +10,7 @@
 
 //Config constants
 #define DEBUGMODE false //For debugging
-#define REFRESHRATE 
+#define REFRESHRATE 1025 //hz
 #define DUTYCYCLE 0.5 //Percent in decimal form
 #define SAMPLEDURATION .2 //Seconds
 #define PERCENTERROR 0.03
@@ -42,7 +42,7 @@ void validate();
 
 
 int main(){
-  if(DEBUGMODE){validate();}
+  if(DEBUGMODE){!validate();}
   //Wait for touch
   write_message("Please touch screen to proceed\n");
   while(!LCD.Touch()){Sleep(1);}
